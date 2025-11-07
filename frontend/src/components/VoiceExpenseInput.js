@@ -1,77 +1,256 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Alert } from 'react-bootstrap';
-import { Mic, MicMute } from 'react-bootstrap-icons';
+import { Button, Alert, Badge, Form } from 'react-bootstrap';
+import { Mic, MicMute, ArrowUp, ArrowDown } from 'react-bootstrap-icons';
 
 const VoiceExpenseInput = ({ onResult }) => {
   const [isListening, setIsListening] = useState(false);
   const [error, setError] = useState('');
+  const [detectedType, setDetectedType] = useState('');
+  const [transcript, setTranscript] = useState('');
+  const [quickText, setQuickText] = useState('');
 
   useEffect(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  // Check if browser supports speech recognition
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    setError("Speech recognition not supported in this browser. Try Chrome or Edge.");
+    return;
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const recognition = new SpeechRecognition();
+  
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  recognition.lang = 'en-IN'; // Changed to Indian English
+
+  recognition.onstart = () => {
+    console.log('Speech recognition started');
+    setIsListening(true);
+    setError('');
+    setTranscript('');
+  };
+
+  recognition.onresult = (event) => {
+    console.log('Speech recognition result received');
+    const currentTranscript = event.results[0][0].transcript;
+    setTranscript(currentTranscript);
     
-    if (!SpeechRecognition) {
-      setError("Speech recognition not supported in this browser");
-      return;
+    const { type, cleanedTranscript } = detectTransactionType(currentTranscript);
+    setDetectedType(type);
+    onResult(cleanedTranscript, type);
+  };
+
+  recognition.onerror = (event) => {
+    console.error('Speech recognition error:', event.error);
+    
+    // More specific error handling
+    if (event.error === 'not-allowed') {
+      setError('Microphone access denied. Please allow microphone permissions in your browser.');
+    } else if (event.error === 'network') {
+      setError('Speech recognition service unavailable. This is a browser limitation. Use the text input below.');
+    } else if (event.error === 'audio-capture') {
+      setError('No microphone found. Please check your microphone connection.');
+    } else {
+      setError(`Speech recognition error: ${event.error}. Use text input instead.`);
     }
+    setIsListening(false);
+  };
 
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.lang = 'en-US';
-    recognition.interimResults = false;
+  recognition.onend = () => {
+    console.log('Speech recognition ended');
+    setIsListening(false);
+    setTimeout(() => {
+      setDetectedType('');
+      setTranscript('');
+    }, 3000);
+  };
 
-    recognition.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .map(result => result[0].transcript)
-        .join('');
-      
-      onResult(transcript);
-      setIsListening(false);
-    };
-
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      setError(`Speech recognition error: ${event.error}`);
-      setIsListening(false);
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    if (isListening) {
+  if (isListening) {
+    try {
       recognition.start();
+    } catch (err) {
+      setError('Failed to start speech recognition. Use text input below.');
+      setIsListening(false);
     }
+  }
 
-    return () => {
-      recognition.stop();
+  return () => {
+    if (recognition) {
+      try {
+        recognition.stop();
+      } catch (err) {
+        // Ignore stop errors
+      }
+    }
+  };
+}, [isListening, onResult]);
+
+  const detectTransactionType = (text) => {
+    const lowerText = text.toLowerCase();
+    console.log('Processing text:', text);
+    
+    // Strong income indicators
+    const incomeKeywords = [
+      'salary', 'income', 'received', 'got', 'earned', 'bonus', 'payment', 
+      'refund', 'credited', 'deposit', 'gift', 'reward', 'dividend', 'interest',
+      'profit', 'freelance', 'client', 'money received', 'cashback', 'reimbursement'
+    ];
+    
+    // Strong expense indicators
+    const expenseKeywords = [
+      'spent', 'paid', 'bought', 'purchased', 'shopped', 'ordered', 'booked',
+      'subscription', 'bill', 'fee', 'charge', 'cost', 'price', 'rent',
+      'food', 'lunch', 'dinner', 'breakfast', 'coffee', 'tea', 'snacks',
+      'groceries', 'transport', 'bus', 'train', 'metro', 'taxi', 'auto', 'petrol',
+      'entertainment', 'movie', 'shopping', 'clothes', 'health', 'hospital'
+    ];
+    
+    // Check for income keywords
+    const isIncome = incomeKeywords.some(keyword => lowerText.includes(keyword));
+    
+    // Check for expense keywords  
+    const isExpense = expenseKeywords.some(keyword => lowerText.includes(keyword));
+    
+    // Determine type
+    let detectedType = 'expense'; // Default
+    
+    if (isIncome && !isExpense) {
+      detectedType = 'income';
+    } else if (isExpense && !isIncome) {
+      detectedType = 'expense';
+    } else if (isIncome && isExpense) {
+      // If both found, check context
+      if (lowerText.includes('received') || lowerText.includes('credited') || lowerText.includes('salary')) {
+        detectedType = 'income';
+      } else {
+        detectedType = 'expense';
+      }
+    }
+    
+    console.log('Detected type:', detectedType);
+    
+    // Clean the transcript
+    let cleanedTranscript = text;
+    const phrasesToRemove = [
+      'i received', 'i got', 'received', 'got paid', 'salary of', 'income of',
+      'i spent', 'i paid', 'spent on', 'paid for', 'bought', 'purchased'
+    ];
+    
+    phrasesToRemove.forEach(phrase => {
+      const regex = new RegExp(phrase, 'gi');
+      cleanedTranscript = cleanedTranscript.replace(regex, '').trim();
+    });
+    
+    return {
+      type: detectedType,
+      cleanedTranscript: cleanedTranscript || text
     };
-  }, [isListening, onResult]);
+  };
 
   const toggleListening = () => {
     setError('');
+    setDetectedType('');
+    setTranscript('');
     setIsListening(!isListening);
+  };
+
+  // Manual quick entry as fallback
+  const handleQuickSubmit = (e) => {
+    e.preventDefault();
+    if (!quickText.trim()) return;
+
+    const { type, cleanedTranscript } = detectTransactionType(quickText);
+    setDetectedType(type);
+    onResult(cleanedTranscript, type);
+    setQuickText('');
+    
+    // Auto-clear detection
+    setTimeout(() => setDetectedType(''), 3000);
   };
 
   return (
     <div className="mb-3">
-      <Button
-        variant={isListening ? "danger" : "outline-primary"}
-        onClick={toggleListening}
-        className="d-flex align-items-center"
-      >
-        {isListening ? <MicMute className="me-2" /> : <Mic className="me-2" />}
-        {isListening ? "Stop Recording" : "Voice Input"}
-      </Button>
-      {isListening && (
+      {/* Voice Input Section */}
+      <div className="d-flex align-items-center gap-3 mb-2">
+        <Button
+          variant={isListening ? "danger" : "outline-primary"}
+          onClick={toggleListening}
+          className="d-flex align-items-center"
+          disabled={error && error.includes('not supported')}
+        >
+          {isListening ? <MicMute className="me-2" /> : <Mic className="me-2" />}
+          {isListening ? "Stop Recording" : "Voice Input"}
+        </Button>
+        
+        {isListening && (
+          <div className="spinner-border spinner-border-sm text-primary" role="status">
+            <span className="visually-hidden">Listening...</span>
+          </div>
+        )}
+        
+        {detectedType && (
+          <Badge 
+            bg={detectedType === 'income' ? 'success' : 'danger'} 
+            className="d-flex align-items-center"
+          >
+            {detectedType === 'income' ? <ArrowUp className="me-1" /> : <ArrowDown className="me-1" />}
+            Auto-detected: {detectedType}
+          </Badge>
+        )}
+      </div>
+      
+      {/* Live Transcript Display */}
+      {transcript && (
+        <Alert variant="info" className="mt-2">
+          <strong>Heard:</strong> "{transcript}"
+        </Alert>
+      )}
+      
+      {/* Status Messages */}
+      {isListening && !transcript && (
         <div className="mt-2 text-muted">
-          Listening... Speak your expense (e.g., "Lunch 15 dollars")
+          <div>🎤 <strong>Listening...</strong> Speak clearly into your microphone</div>
+          <div className="small mt-1">
+            <strong>Try saying:</strong> "Salary 50000" or "Lunch 250 at restaurant"
+          </div>
         </div>
       )}
+      
+      {/* Quick Manual Entry Fallback */}
+      <div className="mt-3">
+        <Form onSubmit={handleQuickSubmit}>
+          <div className="d-flex gap-2">
+            <Form.Control
+              type="text"
+              placeholder="Or type quickly: 'Salary 50000' or 'Lunch 250'"
+              value={quickText}
+              onChange={(e) => setQuickText(e.target.value)}
+              size="sm"
+            />
+            <Button variant="outline-secondary" type="submit" size="sm">
+              Quick Add
+            </Button>
+          </div>
+        </Form>
+      </div>
+      
+      {/* Error Display */}
       {error && (
         <Alert variant="warning" className="mt-2">
           {error}
+          <div className="small mt-1">
+            <strong>Tip:</strong> Use the quick text entry above as backup
+          </div>
         </Alert>
       )}
+      
+      {/* Help Text */}
+      <div className="text-muted small mt-2">
+        <strong>Voice examples that work:</strong>
+        <div>• "<strong>Salary 50000</strong>" → Auto income</div>
+        <div>• "<strong>Lunch 250 at restaurant</strong>" → Auto expense</div>
+        <div>• "<strong>Received 15000 from client</strong>" → Auto income</div>
+      </div>
     </div>
   );
 };

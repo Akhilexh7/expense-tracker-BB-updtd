@@ -73,26 +73,22 @@ const Expenses = () => {
     }
   };
 
-  const handleVoiceResult = (transcript) => {
-    const words = transcript.toLowerCase().split(' ');
+  // Updated voice result handler with auto-type detection
+  const handleVoiceResult = (transcript, detectedType = 'expense') => {
     const amountMatch = transcript.match(/\d+(\.\d{1,2})?/);
-    
-    // Enhanced income detection
-    const incomeKeywords = ['salary', 'income', 'received', 'got', 'earned', 'bonus', 'payment', 'refund', 'credited'];
-    const isIncome = incomeKeywords.some(keyword => transcript.toLowerCase().includes(keyword));
     
     if (amountMatch) {
       setFormData(prev => ({
         ...prev,
         amount: amountMatch[0],
         description: transcript,
-        type: isIncome ? 'income' : 'expense'
+        type: detectedType // Use the auto-detected type
       }));
     } else {
       setFormData(prev => ({
         ...prev,
         description: transcript,
-        type: isIncome ? 'income' : 'expense'
+        type: detectedType // Use the auto-detected type
       }));
     }
   };
@@ -112,9 +108,6 @@ const Expenses = () => {
     .reduce((sum, expense) => sum + expense.amount, 0);
 
   const balance = totalIncome - totalExpenses;
-
-  // Get recent transactions
-  const recentTransactions = expenses.slice(0, 10);
 
   return (
     <div>
@@ -166,7 +159,6 @@ const Expenses = () => {
               <Card.Text className="h3 text-success fw-bold">
                 ₹{totalIncome.toLocaleString('en-IN')}
               </Card.Text>
-              <small className="text-muted">{expenses.filter(e => e.type === 'income').length} income entries</small>
             </Card.Body>
           </Card>
         </Col>
@@ -179,7 +171,6 @@ const Expenses = () => {
               <Card.Text className="h3 text-danger fw-bold">
                 ₹{totalExpenses.toLocaleString('en-IN')}
               </Card.Text>
-              <small className="text-muted">{expenses.filter(e => e.type === 'expense').length} expense entries</small>
             </Card.Body>
           </Card>
         </Col>
@@ -192,9 +183,6 @@ const Expenses = () => {
               <Card.Text className={`h3 fw-bold ${balance >= 0 ? 'text-primary' : 'text-warning'}`}>
                 ₹{balance.toLocaleString('en-IN')}
               </Card.Text>
-              <small className="text-muted">
-                {balance >= 0 ? 'You are saving!' : 'You are overspending!'}
-              </small>
             </Card.Body>
           </Card>
         </Col>
@@ -207,9 +195,6 @@ const Expenses = () => {
               <Card.Text className="h3 text-info fw-bold">
                 {totalIncome > 0 ? ((balance / totalIncome) * 100).toFixed(1) : 0}%
               </Card.Text>
-              <small className="text-muted">
-                {totalIncome > 0 ? `₹${balance.toLocaleString('en-IN')} saved` : 'No income yet'}
-              </small>
             </Card.Body>
           </Card>
         </Col>
@@ -219,17 +204,21 @@ const Expenses = () => {
       {success && <Alert variant="success">{success}</Alert>}
 
       <Card className="border-0 shadow-sm">
-        <Card.Header className="bg-white d-flex justify-content-between align-items-center">
+        <Card.Header className="bg-white">
           <h5 className="mb-0">All Transactions</h5>
-          <small className="text-muted">
-            Showing {recentTransactions.length} of {expenses.length} transactions
-          </small>
         </Card.Header>
         <Card.Body>
           {expenses.length === 0 ? (
             <div className="text-center py-5">
               <CashCoin size={48} className="text-muted mb-3" />
               <p className="text-muted">No transactions yet. Add your first income or expense!</p>
+              <Button 
+                variant="primary" 
+                onClick={() => setShowForm(true)}
+                className="mt-2"
+              >
+                <Plus className="me-2" /> Add Your First Transaction
+              </Button>
             </div>
           ) : (
             <Table responsive hover>
@@ -247,11 +236,7 @@ const Expenses = () => {
                 {expenses.map(expense => (
                   <tr key={expense._id}>
                     <td>{new Date(expense.date).toLocaleDateString('en-IN')}</td>
-                    <td>
-                      <div className="d-flex align-items-center">
-                        {expense.description}
-                      </div>
-                    </td>
+                    <td>{expense.description}</td>
                     <td>
                       <span className={`badge text-capitalize ${
                         expense.type === 'income' ? 'bg-success' : 'bg-secondary'
