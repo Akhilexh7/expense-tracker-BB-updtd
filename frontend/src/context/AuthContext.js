@@ -12,16 +12,16 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
-    
-    if (token && userData) {
+
+    if (userData) {
       try {
-        setUser(JSON.parse(userData));
-        authAPI.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        const parsed = JSON.parse(userData);
+        setUser(parsed);
+        // set simple header for non-JWT auth
+        authAPI.defaults.headers.common['x-user-id'] = parsed.id;
       } catch (error) {
         console.error('❌ Error parsing stored user data:', error);
-        localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
     }
@@ -37,15 +37,14 @@ export const AuthProvider = ({ children }) => {
         password 
       });
       
-  const { token, user } = response.data;
-      
+  const user = response.data.user || response.data;
+
   // Store in localStorage
-  localStorage.setItem('token', token);
   localStorage.setItem('user', JSON.stringify(user));
-      
-  // Set default auth header
-  authAPI.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
+
+  // Set default header for non-JWT auth
+  authAPI.defaults.headers.common['x-user-id'] = user.id;
+
   // Update state
   setUser(user);
       
@@ -96,6 +95,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     console.log('🚪 Logging out user');
     localStorage.removeItem('user');
+    delete authAPI.defaults.headers.common['x-user-id'];
     setUser(null);
   };
 

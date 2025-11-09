@@ -1,5 +1,4 @@
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 // User registration
@@ -95,20 +94,9 @@ exports.login = async (req, res) => {
       email: user.email
     };
 
-    // Generate JWT token
-    if (!process.env.JWT_SECRET) {
-      console.error('❌ JWT_SECRET not set');
-      return res.status(500).json({ message: 'Server configuration error' });
-    }
-
-    const token = jwt.sign(
-      { userId: user._id, username: user.username, email: user.email },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
     console.log('✅ Login successful for user:', user.email);
-    return res.json({ token, user: userData });
+    // Return user data only (no JWT)
+    return res.json({ user: userData });
   } catch (error) {
     console.error('❌ Login error:', error);
     res.status(500).json({ 
