@@ -12,13 +12,16 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
     
-    if (userData) {
+    if (token && userData) {
       try {
         setUser(JSON.parse(userData));
+        authAPI.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       } catch (error) {
         console.error('❌ Error parsing stored user data:', error);
+        localStorage.removeItem('token');
         localStorage.removeItem('user');
       }
     }
@@ -34,13 +37,17 @@ export const AuthProvider = ({ children }) => {
         password 
       });
       
-      const user = response.data;
+  const { token, user } = response.data;
       
-      // Store in localStorage
-      localStorage.setItem('user', JSON.stringify(user));
+  // Store in localStorage
+  localStorage.setItem('token', token);
+  localStorage.setItem('user', JSON.stringify(user));
       
-      // Update state
-      setUser(user);
+  // Set default auth header
+  authAPI.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      
+  // Update state
+  setUser(user);
       
       console.log('✅ Login successful');
       return { success: true };
