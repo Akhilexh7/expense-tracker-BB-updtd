@@ -27,6 +27,7 @@ ChartJS.register(
 
 const Dashboard = () => {
   const [expenses, setExpenses] = useState([]);
+  const [budget, setBudget] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [graphType, setGraphType] = useState('line'); // line or scatter
