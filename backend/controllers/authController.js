@@ -89,6 +89,12 @@ exports.login = async (req, res) => {
     }
 
     // Generate JWT token
+    console.log('🔑 Generating JWT token...');
+    if (!process.env.JWT_SECRET) {
+      console.error('❌ JWT_SECRET is not defined in environment variables');
+      return res.status(500).json({ message: "Server configuration error" });
+    }
+    
     const token = jwt.sign(
       { 
         userId: user._id, 
@@ -98,6 +104,8 @@ exports.login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
+    
+    console.log('✅ JWT token generated successfully');
 
     console.log('✅ Login successful for user:', user.email);
     

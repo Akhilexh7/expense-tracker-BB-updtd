@@ -38,6 +38,15 @@ app.use('/api/expenses', require('./routes/expenseRoutes'));
 app.use('/api/budget', require('./routes/budgetRoutes'));
 app.use('/api/reminders', require('./routes/reminderRoutes')); // Add this line
 
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('❌ Server Error:', err);
+  res.status(500).json({ 
+    message: "Internal server error", 
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined 
+  });
+});
+
 // Test route
 app.get('/api/health', (req, res) => {
   res.json({ 
