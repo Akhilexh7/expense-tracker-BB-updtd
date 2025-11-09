@@ -37,11 +37,18 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'X-User-Id']
 }));
 
 // Ensure preflight requests are handled
 app.options('*', cors());
+
+// Also explicitly add CORS headers for all responses (helps some proxies/browsers)
+app.use((req, res, next) => {
+  const allowHeaders = ['Content-Type', 'Authorization', 'x-user-id', 'X-User-Id'];
+  res.header('Access-Control-Allow-Headers', allowHeaders.join(', '));
+  next();
+});
 
 // Parse JSON bodies
 app.use(express.json());
