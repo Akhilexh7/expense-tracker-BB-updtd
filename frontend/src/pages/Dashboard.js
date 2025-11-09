@@ -514,6 +514,17 @@ const Dashboard = () => {
                   <strong>Warning:</strong> You are currently overspending. Consider reducing expenses.
                 </Alert>
               )}
+              {budget && (
+                <div className="mt-3">
+                  <h6>Budget Status</h6>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <span>Monthly Budget: ₹{budget.amount?.toLocaleString('en-IN')}</span>
+                    <span className={totalExpenses > budget.amount ? 'text-danger' : 'text-success'}>
+                      Used: {budget.amount ? ((totalExpenses / budget.amount) * 100).toFixed(1) : 0}%
+                    </span>
+                  </div>
+                </div>
+              )}
             </Card.Body>
           </Card>
         </Col>
