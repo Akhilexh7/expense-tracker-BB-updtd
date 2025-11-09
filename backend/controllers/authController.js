@@ -1,5 +1,4 @@
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
 // User registration
@@ -87,23 +86,13 @@ exports.login = async (req, res) => {
         message: "Invalid email or password" 
       });
     }
-
-    // Generate JWT token
-    console.log('🔑 Generating JWT token...');
-    if (!process.env.JWT_SECRET) {
-      console.error('❌ JWT_SECRET is not defined in environment variables');
-      return res.status(500).json({ message: "Server configuration error" });
-    }
     
-    const token = jwt.sign(
-      { 
-        userId: user._id, 
-        username: user.username,
-        email: user.email 
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    // Send user data without sensitive information
+    const userData = {
+      id: user._id,
+      username: user.username,
+      email: user.email
+    };
     
     console.log('✅ JWT token generated successfully');
 
