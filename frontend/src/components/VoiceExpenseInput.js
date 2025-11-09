@@ -9,19 +9,27 @@ const VoiceExpenseInput = ({ onResult }) => {
   const [transcript, setTranscript] = useState('');
   const [quickText, setQuickText] = useState('');
 
+  const [isVoiceAvailable, setIsVoiceAvailable] = useState(false);
+
   useEffect(() => {
-    // Check if we're on HTTPS in production
-    if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
-      setError("Speech recognition requires HTTPS. This is a security requirement from browsers.");
+    // Check security requirements for speech recognition
+    const isSecure = window.isSecureContext && (window.location.protocol === 'https:' || window.location.hostname === 'localhost');
+    const hasSpeechSupport = 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+    
+    if (!isSecure) {
+      setError("Voice input requires HTTPS for security. Using quick text entry mode.");
+      setIsVoiceAvailable(false);
       return;
     }
 
-    // Check if browser supports speech recognition
-    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      setError("Speech recognition not supported in this browser. Try Chrome or Edge.");
+    if (!hasSpeechSupport) {
+      setError("Voice input not supported in this browser. Using quick text entry mode.");
+      setIsVoiceAvailable(false);
       return;
     }
 
+    // If we get here, voice should be available
+    setIsVoiceAvailable(true);
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
   
@@ -180,55 +188,63 @@ const VoiceExpenseInput = ({ onResult }) => {
 
   return (
     <div className="mb-3">
-      {/* Voice Input Section */}
-      <div className="d-flex align-items-center gap-3 mb-2">
-        <Button
-          variant={isListening ? "danger" : "outline-primary"}
-          onClick={toggleListening}
-          className="d-flex align-items-center"
-          disabled={error && error.includes('not supported')}
-        >
-          {isListening ? <MicMute className="me-2" /> : <Mic className="me-2" />}
-          {isListening ? "Stop Recording" : "Voice Input"}
-        </Button>
-        
-        {isListening && (
-          <div className="spinner-border spinner-border-sm text-primary" role="status">
-            <span className="visually-hidden">Listening...</span>
+      {/* Voice Input Section - Only show if available */}
+      {isVoiceAvailable && (
+        <>
+          <div className="d-flex align-items-center gap-3 mb-2">
+            <Button
+              variant={isListening ? "danger" : "outline-primary"}
+              onClick={toggleListening}
+              className="d-flex align-items-center"
+            >
+              {isListening ? <MicMute className="me-2" /> : <Mic className="me-2" />}
+              {isListening ? "Stop Recording" : "Voice Input"}
+            </Button>
+          
+            {isListening && (
+              <div className="spinner-border spinner-border-sm text-primary" role="status">
+                <span className="visually-hidden">Listening...</span>
+              </div>
+            )}
+            
+            {detectedType && (
+              <Badge 
+                bg={detectedType === 'income' ? 'success' : 'danger'} 
+                className="d-flex align-items-center"
+              >
+                {detectedType === 'income' ? <ArrowUp className="me-1" /> : <ArrowDown className="me-1" />}
+                Auto-detected: {detectedType}
+              </Badge>
+            )}
           </div>
-        )}
-        
-        {detectedType && (
-          <Badge 
-            bg={detectedType === 'income' ? 'success' : 'danger'} 
-            className="d-flex align-items-center"
-          >
-            {detectedType === 'income' ? <ArrowUp className="me-1" /> : <ArrowDown className="me-1" />}
-            Auto-detected: {detectedType}
-          </Badge>
-        )}
-      </div>
-      
-      {/* Live Transcript Display */}
-      {transcript && (
-        <Alert variant="info" className="mt-2">
-          <strong>Heard:</strong> "{transcript}"
-        </Alert>
+          
+          {/* Live Transcript Display */}
+          {transcript && (
+            <Alert variant="info" className="mt-2">
+              <strong>Heard:</strong> "{transcript}"
+            </Alert>
+          )}
+          
+          {/* Status Messages */}
+          {isListening && !transcript && (
+            <div className="mt-2 text-muted">
+              <div>🎤 <strong>Listening...</strong> Speak clearly into your microphone</div>
+              <div className="small mt-1">
+                <strong>Try saying:</strong> "Salary 50000" or "Lunch 250 at restaurant"
+              </div>
+            </div>
+          )}
+        </>
       )}
       
-      {/* Status Messages */}
-      {isListening && !transcript && (
-        <div className="mt-2 text-muted">
-          <div>🎤 <strong>Listening...</strong> Speak clearly into your microphone</div>
-          <div className="small mt-1">
-            <strong>Try saying:</strong> "Salary 50000" or "Lunch 250 at restaurant"
+      {/* Quick Text Entry - More prominent when voice unavailable */}
+      <div className={`mt-3 ${!isVoiceAvailable ? 'border p-3 rounded bg-light' : ''}`}>
+        {!isVoiceAvailable && (
+          <div className="text-primary mb-2">
+            <strong>💡 Quick Text Entry Mode</strong>
+            <div className="small text-muted">Enter transactions in the format: "Salary 50000" or "Lunch 250"</div>
           </div>
-        </div>
-      )}
-      
-      {/* Quick Manual Entry Fallback */}
-      <div className={`mt-3 ${error ? 'border p-3 rounded bg-light' : ''}`}>
-        {error && <div className="text-primary mb-2"><strong>💡 Quick Text Entry Available!</strong></div>}
+        )}
         <Form onSubmit={handleQuickSubmit}>
           <div className="d-flex gap-2">
             <Form.Control
@@ -236,12 +252,12 @@ const VoiceExpenseInput = ({ onResult }) => {
               placeholder="Type: 'Salary 50000' or 'Lunch 250'"
               value={quickText}
               onChange={(e) => setQuickText(e.target.value)}
-              className={error ? 'form-control-lg' : 'form-control-sm'}
+              className={!isVoiceAvailable ? 'form-control-lg' : 'form-control-sm'}
             />
             <Button 
-              variant={error ? "primary" : "outline-secondary"} 
+              variant={!isVoiceAvailable ? "primary" : "outline-secondary"} 
               type="submit" 
-              className={error ? '' : 'btn-sm'}
+              className={!isVoiceAvailable ? '' : 'btn-sm'}
             >
               Quick Add
             </Button>
@@ -249,8 +265,8 @@ const VoiceExpenseInput = ({ onResult }) => {
         </Form>
       </div>
       
-      {/* Error Display */}
-      {error && (
+      {/* Error Display - Only show for transient errors when voice is available */}
+      {isVoiceAvailable && error && (
         <Alert variant="warning" className="mt-2">
           {error}
           <div className="small mt-1">
@@ -259,9 +275,9 @@ const VoiceExpenseInput = ({ onResult }) => {
         </Alert>
       )}
       
-      {/* Help Text */}
+      {/* Help Text - Show relevant examples based on mode */}
       <div className="text-muted small mt-2">
-        <strong>Voice examples that work:</strong>
+        <strong>{isVoiceAvailable ? 'Voice & Text Examples:' : 'Text Examples:'}</strong>
         <div>• "<strong>Salary 50000</strong>" → Auto income</div>
         <div>• "<strong>Lunch 250 at restaurant</strong>" → Auto expense</div>
         <div>• "<strong>Received 15000 from client</strong>" → Auto income</div>
