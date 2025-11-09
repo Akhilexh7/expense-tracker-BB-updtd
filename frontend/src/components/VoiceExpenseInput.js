@@ -10,14 +10,20 @@ const VoiceExpenseInput = ({ onResult }) => {
   const [quickText, setQuickText] = useState('');
 
   useEffect(() => {
-  // Check if browser supports speech recognition
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    setError("Speech recognition not supported in this browser. Try Chrome or Edge.");
-    return;
-  }
+    // Check if we're on HTTPS in production
+    if (window.location.protocol === 'http:' && window.location.hostname !== 'localhost') {
+      setError("Speech recognition requires HTTPS. This is a security requirement from browsers.");
+      return;
+    }
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const recognition = new SpeechRecognition();
+    // Check if browser supports speech recognition
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      setError("Speech recognition not supported in this browser. Try Chrome or Edge.");
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
   
   recognition.continuous = false;
   recognition.interimResults = false;
@@ -47,11 +53,15 @@ const VoiceExpenseInput = ({ onResult }) => {
     if (event.error === 'not-allowed') {
       setError('Microphone access denied. Please allow microphone permissions in your browser.');
     } else if (event.error === 'network') {
-      setError('Speech recognition service unavailable. This is a browser limitation. Use the text input below.');
+      setError('Speech recognition requires a stable internet connection and HTTPS. Please ensure you\'re on HTTPS and try again.');
     } else if (event.error === 'audio-capture') {
       setError('No microphone found. Please check your microphone connection.');
+    } else if (event.error === 'service-not-allowed') {
+      setError('Speech service not available in your region or browser. Try a different browser or use quick text entry.');
+    } else if (event.error === 'language-not-supported') {
+      setError('Selected language (en-IN) not supported. Try a different browser or use quick text entry.');
     } else {
-      setError(`Speech recognition error: ${event.error}. Use text input instead.`);
+      setError(`Speech recognition error: ${event.error}. Use quick text entry instead.`);
     }
     setIsListening(false);
   };
@@ -217,17 +227,22 @@ const VoiceExpenseInput = ({ onResult }) => {
       )}
       
       {/* Quick Manual Entry Fallback */}
-      <div className="mt-3">
+      <div className={`mt-3 ${error ? 'border p-3 rounded bg-light' : ''}`}>
+        {error && <div className="text-primary mb-2"><strong>💡 Quick Text Entry Available!</strong></div>}
         <Form onSubmit={handleQuickSubmit}>
           <div className="d-flex gap-2">
             <Form.Control
               type="text"
-              placeholder="Or type quickly: 'Salary 50000' or 'Lunch 250'"
+              placeholder="Type: 'Salary 50000' or 'Lunch 250'"
               value={quickText}
               onChange={(e) => setQuickText(e.target.value)}
-              size="sm"
+              className={error ? 'form-control-lg' : 'form-control-sm'}
             />
-            <Button variant="outline-secondary" type="submit" size="sm">
+            <Button 
+              variant={error ? "primary" : "outline-secondary"} 
+              type="submit" 
+              className={error ? '' : 'btn-sm'}
+            >
               Quick Add
             </Button>
           </div>
