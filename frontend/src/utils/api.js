@@ -10,8 +10,18 @@ const api = axios.create({
 // Add request interceptor for debugging
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
+  const userData = localStorage.getItem('user');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  } else if (userData) {
+    try {
+      const user = JSON.parse(userData);
+      if (user && user.id) {
+        config.headers['x-user-id'] = user.id;
+      }
+    } catch (err) {
+      // ignore parse errors
+    }
   }
   console.log('🔄 API Request:', {
     url: config.url,
