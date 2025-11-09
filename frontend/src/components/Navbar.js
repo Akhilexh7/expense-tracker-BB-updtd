@@ -2,6 +2,7 @@ import React from 'react';
 import { Navbar as BootstrapNavbar, Nav, Container, Button } from 'react-bootstrap';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import NotificationPanel from './NotificationPanel';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -20,6 +21,7 @@ const Navbar = () => {
         </BootstrapNavbar.Brand>
         
         <BootstrapNavbar.Toggle aria-controls="basic-navbar-nav" />
+        
         <BootstrapNavbar.Collapse id="basic-navbar-nav">
           {user ? (
             <>
@@ -28,10 +30,15 @@ const Navbar = () => {
                 <Nav.Link as={Link} to="/expenses">Expenses</Nav.Link>
                 <Nav.Link as={Link} to="/budget">Budget</Nav.Link>
               </Nav>
-              <Nav>
-                <BootstrapNavbar.Text className="me-3">
+              
+              <Nav className="align-items-center">
+                {/* Notification Panel */}
+                <NotificationPanel />
+                
+                <BootstrapNavbar.Text className="me-3 d-none d-md-block">
                   Welcome, {user.username}
                 </BootstrapNavbar.Text>
+                
                 <Button variant="outline-light" onClick={handleLogout}>
                   Logout
                 </Button>
