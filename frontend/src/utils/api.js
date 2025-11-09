@@ -11,9 +11,13 @@ const api = axios.create({
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   const userData = localStorage.getItem('user');
+  // If a token exists, keep sending it for backward compatibility, but
+  // always attach x-user-id when user data is present so backend that
+  // expects the header (no-JWT mode) can authenticate requests.
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-  } else if (userData) {
+  }
+  if (userData) {
     try {
       const user = JSON.parse(userData);
       if (user && user.id) {
