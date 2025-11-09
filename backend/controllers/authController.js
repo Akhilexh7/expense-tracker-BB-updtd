@@ -93,19 +93,9 @@ exports.login = async (req, res) => {
       username: user.username,
       email: user.email
     };
-    
-    console.log('✅ JWT token generated successfully');
 
     console.log('✅ Login successful for user:', user.email);
-    
-    res.json({
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email
-      }
-    });
+    return res.json(userData);
   } catch (error) {
     console.error('❌ Login error:', error);
     res.status(500).json({ 
