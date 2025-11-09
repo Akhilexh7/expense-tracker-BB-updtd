@@ -27,10 +27,8 @@ ChartJS.register(
 
 const Dashboard = () => {
   const [expenses, setExpenses] = useState([]);
-  const [budget, setBudget] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [chartType, setChartType] = useState('daily'); // daily, weekly, monthly
   const [graphType, setGraphType] = useState('line'); // line or scatter
 
   useEffect(() => {

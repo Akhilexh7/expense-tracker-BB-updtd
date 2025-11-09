@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Table, Button, Form, Row, Col, Alert, Spinner } from 'react-bootstrap';
+import { Card, Table, Form, Row, Col, Alert, Spinner } from 'react-bootstrap';
 import { api } from '../utils/api';
 
 const Budget = () => {
