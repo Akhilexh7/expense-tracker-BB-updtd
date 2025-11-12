@@ -11,6 +11,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Expenses from './pages/Expenses';
 import Budget from './pages/Budget';
+import Home from './pages/Homepage';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Navbar />
           <Container className="mt-4">
             <Routes>
+              <Route path="/home" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -36,7 +38,7 @@ function App() {
 // Protected route component
 const ProtectedRoute = ({ children }) => {
   const { user } = useAuth();
-  return user ? children : <Navigate to="/login" />;
+  return user ? children : <Navigate to="/home" />;
 };
 
 export default App;
