@@ -24,19 +24,46 @@ const allowedOrigins = [
   FRONTEND_URL
 ];
 
-app.use(cors({
-  origin: true,
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️ CORS request blocked from origin: ${origin}`);
+      callback(new Error('Not allowed by CORS policy'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id']
-}));
-// Ensure preflight requests are handled
-app.options('*', cors());
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-id', 'X-User-Id']
+};
 
-// Also explicitly add CORS headers for all responses (helps some proxies/browsers)
+app.use(cors(corsOptions));
+
+// Ensure preflight requests (OPTIONS) are handled
+app.options('*', cors(corsOptions));
+
+// Explicitly set CORS headers on every response for extra compatibility
 app.use((req, res, next) => {
-  const allowHeaders = ['Content-Type', 'Authorization', 'x-user-id', 'X-User-Id'];
-  res.header('Access-Control-Allow-Headers', allowHeaders.join(', '));
+  const origin = req.headers.origin;
+  
+  // If origin is in allowed list, set Access-Control-Allow-Origin
+  if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
+  
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id, X-User-Id');
+  
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
   next();
 });
 
@@ -82,29 +109,6 @@ app.use((err, req, res, next) => {
     message: "Internal server error",
     error: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
-});
-
-// Global error handler
-app.use((err, req, res, next) => {
-  console.error('❌ Server Error:', err);
-  res.status(500).json({ 
-    message: "Internal server error", 
-    error: process.env.NODE_ENV === 'development' ? err.message : undefined 
-  });
-});
-
-// Test route
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    message: 'BudgetBuddy API is running!',
-    database: mongoose.connection.readyState === 1 ? 'Connected' : 'Disconnected',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Test reminder route
-app.get('/api/reminders/test', (req, res) => {
-  res.json({ message: 'Reminders route is working!' });
 });
 
 app.listen(PORT, () => {
