@@ -7,6 +7,7 @@ export default function Home() {
     const [scrolled, setScrolled] = useState(false);
 
     useEffect(() => {
+        console.log(scrolled);
         const handleScroll = () => setScrolled(window.scrollY > 10);
         window.addEventListener("scroll", handleScroll);
         return () => window.removeEventListener("scroll", handleScroll);
